@@ -1,7 +1,7 @@
 "use client";
 
 import * as THREE from "three";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   OrbitControls,
@@ -13,11 +13,39 @@ import {
 export default function CanvasScene() {
   const [selected, setSelected] = useState(false);
   const [isTransforming, setIsTransforming] = useState(false);
-  const [cubePosition, setCubePosition] = useState<[number, number, number]>([0, 0, 0]);
+  const [cubePosition, setCubePosition] = useState<[number, number, number]>([
+    0, 0.5, 0, // 👈 base del cubo justo sobre la malla
+  ]);
+  const [mode, setMode] = useState<"translate" | "scale" | "rotate">(
+    "translate"
+  );
   const meshRef = useRef<THREE.Mesh | null>(null);
+  const transformRef = useRef<any>(null);
+
+  // 🔹 Detectar teclas para cambiar modo
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key.toLowerCase()) {
+        case "t":
+          setMode("translate");
+          break;
+        case "s":
+          setMode("scale");
+          break;
+        case "r":
+          setMode("rotate");
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full h-screen relative">
       <Canvas camera={{ position: [4, 3, 4], fov: 45, far: 1000 }}>
         {/* Fondo y niebla */}
         <color attach="background" args={["#f3f4f6"]} />
@@ -53,14 +81,19 @@ export default function CanvasScene() {
           }}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="#d1d5db" roughness={0.6} metalness={0.05} />
+          <meshStandardMaterial
+            color="#d1d5db"
+            roughness={0.6}
+            metalness={0.05}
+          />
           {selected && <Edges scale={1.03} color="#2563eb" threshold={15} />}
         </mesh>
 
-        {/* TransformControls solo si el cubo ya está en la escena */}
+        {/* TransformControls */}
         {selected && meshRef.current && (
           <TransformControls
-            mode="translate"
+            ref={transformRef}
+            mode={mode}
             showX
             showY
             showZ
@@ -71,7 +104,7 @@ export default function CanvasScene() {
               setIsTransforming(false);
               if (meshRef.current) {
                 const pos = meshRef.current.position;
-                setCubePosition([pos.x, pos.y, pos.z]); // guarda posición nueva
+                setCubePosition([pos.x, pos.y, pos.z]);
               }
             }}
           />
@@ -91,6 +124,19 @@ export default function CanvasScene() {
           target={[0, 0, 0]}
         />
       </Canvas>
+
+      {/* Indicador de modo actual */}
+      <div className="absolute top-4 left-4 bg-white px-4 py-2 rounded-lg shadow text-gray-700 text-sm font-medium">
+        <p>
+          Modo actual:{" "}
+          <span className="text-blue-600 font-semibold uppercase">
+            {mode}
+          </span>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Usa <b>T</b> (mover) • <b>R</b> (rotar) • <b>S</b> (escalar)
+        </p>
+      </div>
     </div>
   );
 }
